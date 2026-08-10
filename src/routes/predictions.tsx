@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Pencil, Plus, Search } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/DashboardShell";
-import { QueryState } from "@/components/dashboard/QueryState";
+import { QueryState, useApiConfigured } from "@/components/dashboard/QueryState";
 import { PredictionDialog } from "@/components/dashboard/PredictionDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -68,8 +68,9 @@ function PredictionsPage() {
     return () => clearTimeout(id);
   }, [keyword]);
 
-  const list = useQuery(
-    predictionsQuery({
+  const configured = useApiConfigured();
+  const list = useQuery({
+    ...predictionsQuery({
       ...(debounced ? { keyword: debounced } : {}),
       ...(date ? { date: new Date(`${date}T00:00:00Z`).toISOString() } : {}),
       ...(timeUnit !== "all" ? { timeUnit: timeUnit as TimeUnit } : {}),
@@ -78,7 +79,8 @@ function PredictionsPage() {
       pageNumber,
       pageSize: PAGE_SIZE,
     }),
-  );
+    enabled: configured === "yes",
+  });
 
   const editing = useQuery({ ...predictionQuery(editingId ?? ""), enabled: !!editingId });
   const rows = list.data ?? [];

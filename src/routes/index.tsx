@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Stars, Star, Users } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/DashboardShell";
-import { QueryState } from "@/components/dashboard/QueryState";
+import { QueryState, useApiConfigured } from "@/components/dashboard/QueryState";
 import { Badge } from "@/components/ui/badge";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 import { forecastersQuery, predictionsQuery } from "@/lib/api/queries";
@@ -28,8 +28,16 @@ export const Route = createFileRoute("/")({
 
 function Overview() {
   const { t, lang } = useI18n();
-  const forecasters = useQuery(forecastersQuery({ pageNumber: 1, pageSize: 100 }));
-  const predictions = useQuery(predictionsQuery({ pageNumber: 1, pageSize: 10, sortBy: "desc" }));
+  const configured = useApiConfigured();
+  const enabled = configured === "yes";
+  const forecasters = useQuery({
+    ...forecastersQuery({ pageNumber: 1, pageSize: 100 }),
+    enabled,
+  });
+  const predictions = useQuery({
+    ...predictionsQuery({ pageNumber: 1, pageSize: 10, sortBy: "desc" }),
+    enabled,
+  });
 
   const rates = (forecasters.data ?? []).map((f) => f.rate ?? 0).filter((r) => r > 0);
   const avg = rates.length ? rates.reduce((a, b) => a + b, 0) / rates.length : 0;

@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Pencil, Plus, Search, Star } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/DashboardShell";
-import { QueryState } from "@/components/dashboard/QueryState";
+import { QueryState, useApiConfigured } from "@/components/dashboard/QueryState";
 import { ForecasterDialog } from "@/components/dashboard/ForecasterDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,15 +53,17 @@ function ForecastersPage() {
     return () => clearTimeout(id);
   }, [keyword]);
 
-  const list = useQuery(
-    forecastersQuery({
+  const configured = useApiConfigured();
+  const list = useQuery({
+    ...forecastersQuery({
       ...(debounced ? { keyword: debounced } : {}),
       ...(rate !== "all" ? { rate: Number(rate) } : {}),
       sortBy,
       pageNumber,
       pageSize: PAGE_SIZE,
     }),
-  );
+    enabled: configured === "yes",
+  });
 
   const editing = useQuery({
     ...forecasterQuery(editingId ?? ""),
