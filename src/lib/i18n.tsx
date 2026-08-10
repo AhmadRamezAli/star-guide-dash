@@ -164,26 +164,23 @@ type I18nValue = {
   lang: Lang;
   dir: Dir;
   setLang: (lang: Lang) => void;
-  setDir: (dir: Dir) => void;
   t: (key: TranslationKey) => string;
 };
 
 const I18nContext = React.createContext<I18nValue | null>(null);
 
 const LANG_KEY = "zodiac.lang";
-const DIR_KEY = "zodiac.dir";
+
+const dirFor = (lang: Lang): Dir => (lang === "ar" ? "rtl" : "ltr");
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = React.useState<Lang>("en");
-  const [dir, setDirState] = React.useState<Dir>("ltr");
+  const dir = dirFor(lang);
 
-  // Read persisted preferences after hydration to avoid SSR mismatches.
+  // Read persisted preference after hydration to avoid SSR mismatches.
   React.useEffect(() => {
     const storedLang = localStorage.getItem(LANG_KEY) as Lang | null;
-    const storedDir = localStorage.getItem(DIR_KEY) as Dir | null;
     if (storedLang === "ar" || storedLang === "en") setLangState(storedLang);
-    if (storedDir === "rtl" || storedDir === "ltr") setDirState(storedDir);
-    else if (storedLang === "ar") setDirState("rtl");
   }, []);
 
   React.useEffect(() => {
@@ -194,14 +191,6 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const setLang = React.useCallback((next: Lang) => {
     setLangState(next);
     localStorage.setItem(LANG_KEY, next);
-    const nextDir: Dir = next === "ar" ? "rtl" : "ltr";
-    setDirState(nextDir);
-    localStorage.setItem(DIR_KEY, nextDir);
-  }, []);
-
-  const setDir = React.useCallback((next: Dir) => {
-    setDirState(next);
-    localStorage.setItem(DIR_KEY, next);
   }, []);
 
   const t = React.useCallback(
@@ -209,10 +198,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     [lang],
   );
 
-  const value = React.useMemo(
-    () => ({ lang, dir, setLang, setDir, t }),
-    [lang, dir, setLang, setDir, t],
-  );
+  const value = React.useMemo(() => ({ lang, dir, setLang, t }), [lang, dir, setLang, t]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
