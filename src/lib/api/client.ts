@@ -92,7 +92,7 @@ async function request<T>(
 
 export const api = {
   get: <T>(path: string, params?: Record<string, unknown>) =>
-    request<T>(path, { method: "GET", params }),
+    request<T>(path, params ? { method: "GET", params } : { method: "GET" }),
   post: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "POST", body: JSON.stringify(body) }),
 };
