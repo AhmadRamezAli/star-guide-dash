@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,22 +24,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useI18n } from "@/lib/i18n";
-import {
-  createPrediction,
-  forecastersQuery,
-  predictionKeys,
-  updatePrediction,
-} from "@/lib/api/queries";
-import { TIME_UNITS, ZODIAC_SIGNS } from "@/lib/api/types";
-import type { PredictionDto, TimeUnit, ZodiacSign } from "@/lib/api/types";
+import { getPredictions, updatePrediction, createPrediction } from "../../services/prediction-service";
+import { PredictionDto } from "../../types/prediction";
+import { TimeUnits, ZodiacSign } from "../../types/enums";
+import { useForcastorList } from "../../hooks/use-forcastor";
 
 const schema = z.object({
   forcastorId: z.string().uuid(),
   date: z.string().min(1),
   summary: z.string().min(2).max(300),
   description: z.string().min(2).max(4000),
-  timeUnit: z.enum(TIME_UNITS),
-  zodiacSign: z.enum(ZODIAC_SIGNS),
+  timeUnit: z.nativeEnum(TimeUnits),
+  zodiacSign: z.nativeEnum(ZodiacSign),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -64,7 +60,9 @@ export function PredictionDialog({
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const isEdit = !!prediction?.id;
-  const forecasters = useQuery(forecastersQuery({ pageNumber: 1, pageSize: 200 }));
+  
+  // Custom hook correctly handling enabled state
+  const forecasters = useForcastorList({ pageNumber: 1, pageSize: 200 }, open);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -73,8 +71,8 @@ export function PredictionDialog({
       date: toDateInput(),
       summary: "",
       description: "",
-      timeUnit: "Day",
-      zodiacSign: "Aries",
+      timeUnit: TimeUnits.Daily,
+      zodiacSign: ZodiacSign.Aries,
     },
   });
 
@@ -85,26 +83,32 @@ export function PredictionDialog({
       date: toDateInput(prediction?.date),
       summary: prediction?.summary ?? "",
       description: prediction?.description ?? "",
-      timeUnit: (prediction?.timeUnit as TimeUnit) ?? "Day",
-      zodiacSign: (prediction?.zodiacSign as ZodiacSign) ?? "Aries",
+      timeUnit: prediction?.timeUnit ?? TimeUnits.Daily,
+      zodiacSign: prediction?.zodiacSign ?? ZodiacSign.Aries,
     });
   }, [open, prediction, form]);
 
   const mutation = useMutation({
-    mutationFn: (values: FormValues) => {
+    mutationFn: async (values: FormValues) => {
       const payload = {
         forcastorId: values.forcastorId,
         date: new Date(`${values.date}T00:00:00Z`).toISOString(),
         summary: values.summary.trim(),
         description: values.description.trim(),
-        timeUnit: values.timeUnit,
-        zodiacSign: values.zodiacSign,
+        timeUnit: values.timeUnit, // Zod guarantees this is a number now
+        zodiacSign: values.zodiacSign, // Zod guarantees this is a number now
       };
-      return isEdit ? updatePrediction({ ...payload, id: prediction!.id }) : createPrediction(payload);
+      
+      const response = isEdit 
+        ? await updatePrediction({ ...payload, id: prediction!.id }) 
+        : await createPrediction(payload);
+        
+      if (!response.isSuccess) throw new Error("Server operation failed");
+      return response;
     },
     onSuccess: () => {
       toast.success(t("common.saved"));
-      queryClient.invalidateQueries({ queryKey: predictionKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["predictions"] });
       onOpenChange(false);
     },
     onError: (error: unknown) =>
@@ -125,6 +129,7 @@ export function PredictionDialog({
           onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
         >
           <div className="grid gap-4 sm:grid-cols-2">
+            
             <div className="space-y-2">
               <Label>{t("prediction.forecaster")}</Label>
               <Select
@@ -137,7 +142,8 @@ export function PredictionDialog({
                   <SelectValue placeholder={t("prediction.forecaster")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {(forecasters.data ?? []).map((f) => (
+                  {/* Fixed ApiResult mapping */}
+                  {(forecasters.data?.value ?? []).map((f) => (
                     <SelectItem key={f.id} value={f.id}>
                       {f.name}
                     </SelectItem>
@@ -148,47 +154,58 @@ export function PredictionDialog({
                 <p className="text-xs text-destructive">{t("prediction.forecaster")}</p>
               ) : null}
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="date">{t("prediction.date")}</Label>
               <Input id="date" type="date" {...form.register("date")} />
             </div>
+
             <div className="space-y-2">
               <Label>{t("prediction.timeUnit")}</Label>
               <Select
-                value={form.watch("timeUnit")}
-                onValueChange={(value) => form.setValue("timeUnit", value as TimeUnit)}
+                value={String(form.watch("timeUnit"))}
+                onValueChange={(value) => form.setValue("timeUnit", Number(value), { shouldValidate: true })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {TIME_UNITS.map((unit) => (
-                    <SelectItem key={unit} value={unit}>
-                      {t(`unit.${unit}` as const)}
-                    </SelectItem>
+                  {/* Safe TypeScript Enum Mapping */}
+                  {Object.entries(TimeUnits)
+                    .filter(([key]) => isNaN(Number(key)))
+                    .map(([key, val]) => (
+                      <SelectItem key={val} value={val.toString()}>
+                        {t(`unit.${key}`)}
+                      </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-2">
               <Label>{t("prediction.zodiac")}</Label>
               <Select
-                value={form.watch("zodiacSign")}
-                onValueChange={(value) => form.setValue("zodiacSign", value as ZodiacSign)}
+                value={String(form.watch("zodiacSign"))}
+                onValueChange={(value) => form.setValue("zodiacSign", Number(value), { shouldValidate: true })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ZODIAC_SIGNS.map((sign) => (
-                    <SelectItem key={sign} value={sign}>
-                      {t(`sign.${sign}` as const)}
-                    </SelectItem>
+                  {/* Safe TypeScript Enum Mapping */}
+                  {Object.entries(ZodiacSign)
+                    .filter(([key]) => isNaN(Number(key)))
+                    .map(([key, val]) => (
+                      <SelectItem key={val} value={val.toString()}>
+                        {t(`sign.${key}`)}
+                      </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+            
           </div>
+          
           <div className="space-y-2">
             <Label htmlFor="summary">{t("prediction.summary")}</Label>
             <Input id="summary" {...form.register("summary")} />
@@ -196,6 +213,7 @@ export function PredictionDialog({
               <p className="text-xs text-destructive">{form.formState.errors.summary.message}</p>
             ) : null}
           </div>
+          
           <div className="space-y-2">
             <Label htmlFor="pdescription">{t("prediction.description")}</Label>
             <Textarea id="pdescription" rows={6} {...form.register("description")} />
@@ -205,6 +223,7 @@ export function PredictionDialog({
               </p>
             ) : null}
           </div>
+          
           <DialogFooter className="gap-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               {t("common.cancel")}
