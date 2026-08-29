@@ -1,13 +1,16 @@
 import { Link } from "@tanstack/react-router";
-import { LayoutDashboard, Settings, Sparkles, Stars, Users } from "lucide-react";
+// Added UserCircle to represent the new User Management domain
+import { LayoutDashboard, Settings, Sparkles, Stars, Users, UserCircle } from "lucide-react";
 import type { ReactNode } from "react";
 import { LanguageControls } from "./LanguageControls";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 
+// 1. Updated Navigation Array to include the new Users domain
 const nav: { to: string; label: TranslationKey; icon: typeof Users }[] = [
   { to: "/", label: "nav.overview", icon: LayoutDashboard },
   { to: "/forecasters", label: "nav.forecasters", icon: Users },
   { to: "/predictions", label: "nav.predictions", icon: Stars },
+  { to: "/users", label: "nav.users", icon: UserCircle }, // <-- Added this route
   { to: "/settings", label: "nav.settings", icon: Settings },
 ];
 
@@ -31,6 +34,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           </Link>
           <LanguageControls />
         </div>
+        
         <nav className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-2 pb-2 sm:px-5">
           {nav.map((item) => (
             <Link

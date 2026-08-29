@@ -71,7 +71,7 @@ export function PredictionDialog({
       date: toDateInput(),
       summary: "",
       description: "",
-      timeUnit: TimeUnits.Daily,
+      timeUnit: TimeUnits.Day,
       zodiacSign: ZodiacSign.Aries,
     },
   });
@@ -83,7 +83,7 @@ export function PredictionDialog({
       date: toDateInput(prediction?.date),
       summary: prediction?.summary ?? "",
       description: prediction?.description ?? "",
-      timeUnit: prediction?.timeUnit ?? TimeUnits.Daily,
+      timeUnit: prediction?.timeUnit ?? TimeUnits.Day,
       zodiacSign: prediction?.zodiacSign ?? ZodiacSign.Aries,
     });
   }, [open, prediction, form]);

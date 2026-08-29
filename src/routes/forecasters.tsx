@@ -2,32 +2,26 @@ import * as React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Pencil, Plus, Search, Star } from "lucide-react";
+
+// Layout & UI
 import { PageHeader } from "@/components/dashboard/DashboardShell";
-import { QueryState, useApiConfigured } from "@/components/dashboard/QueryState";
+import { QueryState } from "@/components/dashboard/QueryState"; // Removed useApiConfigured
 import { ForecasterDialog } from "@/components/dashboard/ForecasterDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useI18n } from "@/lib/i18n";
-import { forecasterQuery, forecastersQuery } from "@/lib/api/queries";
-import type { ForecasterDto } from "@/lib/api/types";
+
+// New Infrastructure Imports
+import { useForcastorList } from "@/hooks/use-forcastor"; // Adjust path if needed
+import { getForcastors } from "@/services/forcastor-service"; 
+import { ForcastorDto } from "@/types/forcastor"; // Corrected spelling to Forcastor
 
 export const Route = createFileRoute("/forecasters")({
   head: () => ({
     meta: [
       { title: "Forecasters — Zodiac Sign Admin" },
       { name: "description", content: "Create, edit and search the astrologers of your platform." },
-      { property: "og:title", content: "Forecasters — Zodiac Sign Admin" },
-      {
-        property: "og:description",
-        content: "Create, edit and search the astrologers of your platform.",
-      },
     ],
   }),
   component: ForecastersPage,
@@ -45,6 +39,7 @@ function ForecastersPage() {
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
 
+  // Debounce logic to prevent spamming the backend on every keystroke
   React.useEffect(() => {
     const id = setTimeout(() => {
       setDebounced(keyword);
@@ -53,21 +48,20 @@ function ForecastersPage() {
     return () => clearTimeout(id);
   }, [keyword]);
 
-  const configured = useApiConfigured();
-  const list = useQuery({
-    ...forecastersQuery({
-      ...(debounced ? { keyword: debounced } : {}),
-      ...(rate !== "all" ? { rate: Number(rate) } : {}),
-      sortBy,
-      pageNumber,
-      pageSize: PAGE_SIZE,
-    }),
-    enabled: configured === "yes",
+  // 1. Replaced raw useQuery with your custom Domain Hook
+  const list = useForcastorList({
+    ...(debounced ? { keyword: debounced } : {}),
+    ...(rate !== "all" ? { rate: Number(rate) } : {}),
+    sortBy,
+    pageNumber,
+    pageSize: PAGE_SIZE,
   });
 
+  // 2. Fetch single entity for editing directly via the service
   const editing = useQuery({
-    ...forecasterQuery(editingId ?? ""),
-    enabled: !!editingId,
+    queryKey: ["forcastor-detail", editingId],
+    queryFn: () => getForcastors.getById(editingId!),
+    enabled: !!editingId, // Only fires when a specific ID is selected
   });
 
   const openCreate = () => {
@@ -80,7 +74,8 @@ function ForecastersPage() {
     setDialogOpen(true);
   };
 
-  const rows = list.data ?? [];
+  // 3. Extract the array from your standardized C# ApiResult wrapper
+  const rows = list.data?.value ?? [];
 
   return (
     <>
@@ -195,7 +190,8 @@ function ForecastersPage() {
           setDialogOpen(open);
           if (!open) setEditingId(null);
         }}
-        forecaster={editingId ? ((editing.data as ForecasterDto | undefined) ?? null) : null}
+        // 4. Safely extract the single entity value for the dialog
+        forcastor={editingId ? ((editing.data?.value as ForcastorDto | undefined) ?? null) : null}
       />
     </>
   );

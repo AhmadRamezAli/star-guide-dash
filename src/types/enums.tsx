@@ -4,5 +4,5 @@ export enum ZodiacSign {
 }
 
 export enum TimeUnits {
-  Daily = 0, Weekly = 1, Monthly = 2, Yearly = 3
+  Day = 0, Week = 1, Month = 2, Year = 3
 }

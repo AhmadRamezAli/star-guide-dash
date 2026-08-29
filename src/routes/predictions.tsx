@@ -2,45 +2,28 @@ import * as React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Pencil, Plus, Search } from "lucide-react";
+
+// Layout & UI
 import { PageHeader } from "@/components/dashboard/DashboardShell";
-import { QueryState, useApiConfigured } from "@/components/dashboard/QueryState";
+import { QueryState } from "@/components/dashboard/QueryState"; // Removed useApiConfigured
 import { PredictionDialog } from "@/components/dashboard/PredictionDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
-import { predictionQuery, predictionsQuery } from "@/lib/api/queries";
-import { TIME_UNITS, ZODIAC_SIGNS } from "@/lib/api/types";
-import type { PredictionDto, TimeUnit, ZodiacSign } from "@/lib/api/types";
+
+// Domain Services & Types
+import { getPredictions } from "@/services/prediction-service";
+import { PredictionDto } from "@/types/prediction";
+import { TimeUnits, ZodiacSign } from "@/types/enums";
 
 export const Route = createFileRoute("/predictions")({
   head: () => ({
     meta: [
       { title: "Predictions — Zodiac Sign Admin" },
-      {
-        name: "description",
-        content: "Publish and manage daily, weekly, monthly and yearly zodiac predictions.",
-      },
-      { property: "og:title", content: "Predictions — Zodiac Sign Admin" },
-      {
-        property: "og:description",
-        content: "Publish and manage daily, weekly, monthly and yearly zodiac predictions.",
-      },
+      { name: "description", content: "Publish and manage daily, weekly, monthly and yearly zodiac predictions." },
     ],
   }),
   component: PredictionsPage,
@@ -68,22 +51,30 @@ function PredictionsPage() {
     return () => clearTimeout(id);
   }, [keyword]);
 
-  const configured = useApiConfigured();
+  // 1. Direct integration with the API service
   const list = useQuery({
-    ...predictionsQuery({
+    queryKey: ["predictions", { debounced, date, timeUnit, zodiacSign, sortBy, pageNumber }],
+    queryFn: () => getPredictions.getAll({
       ...(debounced ? { keyword: debounced } : {}),
       ...(date ? { date: new Date(`${date}T00:00:00Z`).toISOString() } : {}),
-      ...(timeUnit !== "all" ? { timeUnit: timeUnit as TimeUnit } : {}),
-      ...(zodiacSign !== "all" ? { zodiacSign: zodiacSign as ZodiacSign } : {}),
+      // Convert UI strings back to integers for the backend
+      ...(timeUnit !== "all" ? { timeUnit: Number(timeUnit) } : {}),
+      ...(zodiacSign !== "all" ? { zodiacSign: Number(zodiacSign) } : {}),
       sortBy,
       pageNumber,
       pageSize: PAGE_SIZE,
     }),
-    enabled: configured === "yes",
   });
 
-  const editing = useQuery({ ...predictionQuery(editingId ?? ""), enabled: !!editingId });
-  const rows = list.data ?? [];
+  // 2. Fetch single entity for editing
+  const editing = useQuery({ 
+    queryKey: ["prediction-detail", editingId],
+    queryFn: () => getPredictions.getById(editingId!),
+    enabled: !!editingId 
+  });
+  
+  // 3. Extract the array from the C# ApiResult wrapper
+  const rows = list.data?.value ?? [];
 
   const resetFilters = () => {
     setKeyword("");
@@ -142,10 +133,13 @@ function PredictionsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("common.all")}</SelectItem>
-            {TIME_UNITS.map((u) => (
-              <SelectItem key={u} value={u}>
-                {t(`unit.${u}` as TranslationKey)}
-              </SelectItem>
+            {/* Safe Typescript Enum Mapping */}
+            {Object.entries(TimeUnits)
+              .filter(([key]) => isNaN(Number(key)))
+              .map(([key, val]) => (
+                <SelectItem key={val} value={val.toString()}>
+                  {t(`unit.${key}` as TranslationKey)}
+                </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -161,10 +155,13 @@ function PredictionsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("common.all")}</SelectItem>
-            {ZODIAC_SIGNS.map((s) => (
-              <SelectItem key={s} value={s}>
-                {t(`sign.${s}` as TranslationKey)}
-              </SelectItem>
+             {/* Safe Typescript Enum Mapping */}
+             {Object.entries(ZodiacSign)
+              .filter(([key]) => isNaN(Number(key)))
+              .map(([key, val]) => (
+                <SelectItem key={val} value={val.toString()}>
+                  {t(`sign.${key}` as TranslationKey)}
+                </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -197,10 +194,11 @@ function PredictionsPage() {
                     {new Date(p.date).toLocaleDateString(lang === "ar" ? "ar" : "en-GB")}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{t(`sign.${p.zodiacSign}` as TranslationKey)}</Badge>
+                    {/* Reverse map the integer back to the string key for translation */}
+                    <Badge variant="secondary">{t(`sign.${ZodiacSign[p.zodiacSign]}` as TranslationKey)}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{t(`unit.${p.timeUnit}` as TranslationKey)}</Badge>
+                    <Badge variant="outline">{t(`unit.${TimeUnits[p.timeUnit]}` as TranslationKey)}</Badge>
                   </TableCell>
                   <TableCell className="max-w-[28rem] truncate">{p.summary}</TableCell>
                   <TableCell className="text-end">
@@ -251,7 +249,8 @@ function PredictionsPage() {
           setDialogOpen(open);
           if (!open) setEditingId(null);
         }}
-        prediction={editingId ? ((editing.data as PredictionDto | undefined) ?? null) : null}
+        // 4. Safely extract the single entity value
+        prediction={editingId ? ((editing.data?.value as PredictionDto | undefined) ?? null) : null}
       />
     </>
   );

@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import {  GetForcastors,GetForcastorParams} from "../services/forcastor-service";
+import {  getForcastors,GetForcastorParams} from "../services/forcastor-service";
 
 export const useForcastorList = (params:GetForcastorParams,enabled:boolean) => {
     return useQuery({
         queryKey: ["forcastors", params],
-        queryFn: () => GetForcastors.getAll(params),
+        queryFn: () => getForcastors.getAll(params),
         keepPreviousData: true,
         enabled: enabled,
     });

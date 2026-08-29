@@ -9,7 +9,7 @@ export interface ForcastorDto {
 export interface ForcastorCreateOrUpdateDto {
 id: string | null;
 name: string;
-imagePath: string;
+imageFile?: File | null;
 description: string;
 rate: number | null;
 

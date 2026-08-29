@@ -11,6 +11,7 @@ const dict = {
     "nav.forecasters": "Forecasters",
     "nav.predictions": "Predictions",
     "nav.settings": "Settings",
+    "nav.users": "Users",
     "lang.label": "Language",
     "common.search": "Search",
     "common.create": "Create",
@@ -81,6 +82,7 @@ const dict = {
   },
   ar: {
     "app.name": "الأبراج",
+    "nav.users": "المستخدمون",
     "app.admin": "لوحة التحكم",
     "nav.overview": "نظرة عامة",
     "nav.forecasters": "المنجّمون",

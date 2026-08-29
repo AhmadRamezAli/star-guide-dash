@@ -1,3 +1,4 @@
+// components/dashboard/ForecasterDialog.tsx
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -5,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ImagePicker } from "@/components/ui/image-picker";
 import {
   Dialog,
   DialogContent,
@@ -17,13 +19,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useI18n } from "@/lib/i18n";
-import { createForecaster, forecasterKeys, updateForecaster } from "@/lib/api/queries";
-import type { ForecasterDto } from "@/lib/api/types";
+import { ForcastorDto, ForcastorCreateOrUpdateDto } from "../../types/forcastor";
+import { updateForcastor, createForcastor } from "../../services/forcastor-service";
 
 const schema = z.object({
   name: z.string().min(2).max(120),
   description: z.string().min(2).max(2000),
-  imagePath: z.string().max(500).optional().or(z.literal("")),
+  imageFile: z.instanceof(File).optional().nullable(),
   rate: z.coerce.number().min(1).max(5),
 });
 
@@ -32,51 +34,50 @@ type FormValues = z.infer<typeof schema>;
 export function ForecasterDialog({
   open,
   onOpenChange,
-  forecaster,
+  forcastor,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  forecaster?: ForecasterDto | null;
+  forcastor?: ForcastorDto | null;
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
-  const isEdit = !!forecaster?.id;
+  const isEdit = !!forcastor?.id;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", description: "", imagePath: "", rate: 3 },
+    defaultValues: { name: "", description: "", imageFile: null, rate: 3 },
   });
 
   React.useEffect(() => {
     if (!open) return;
     form.reset({
-      name: forecaster?.name ?? "",
-      description: forecaster?.description ?? "",
-      imagePath: forecaster?.imagePath ?? "",
-      rate: forecaster?.rate ?? 3,
+      name: forcastor?.name ?? "",
+      description: forcastor?.description ?? "",
+      imageFile: null, // Always starts null. Only populated if user selects a new file.
+      rate: forcastor?.rate ?? 3,
     });
-  }, [open, forecaster, form]);
+  }, [open, forcastor, form]);
 
   const mutation = useMutation({
     mutationFn: (values: FormValues) => {
-      // create -> no id in payload; update -> id included.
-      const payload = {
+      const payload: ForcastorCreateOrUpdateDto = {
+        id: isEdit ? forcastor!.id : null,
         name: values.name.trim(),
         description: values.description.trim(),
-        imagePath: values.imagePath?.trim() || "",
+        imageFile: values.imageFile,
         rate: values.rate,
       };
-      return isEdit
-        ? updateForecaster({ ...payload, id: forecaster!.id })
-        : createForecaster(payload);
+      return isEdit ? updateForcastor(payload) : createForcastor(payload);
     },
     onSuccess: () => {
       toast.success(t("common.saved"));
-      queryClient.invalidateQueries({ queryKey: forecasterKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["forcastors"] });
       onOpenChange(false);
     },
-    onError: (error: unknown) => {
-      toast.error(error instanceof Error ? error.message : t("common.error"));
+    onError: (error: any) => {
+      const backendMessage = error.response?.data?.message;
+      toast.error(backendMessage || t("common.error"));
     },
   });
 
@@ -95,33 +96,55 @@ export function ForecasterDialog({
         >
           <div className="space-y-2">
             <Label htmlFor="name">{t("forecaster.name")}</Label>
-            <Input id="name" {...form.register("name")} />
-            {form.formState.errors.name ? (
+            <Input id="name" {...form.register("name")} disabled={mutation.isPending} />
+            {form.formState.errors.name && (
               <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
-            ) : null}
+            )}
           </div>
+          
           <div className="space-y-2">
             <Label htmlFor="description">{t("forecaster.description")}</Label>
-            <Textarea id="description" rows={4} {...form.register("description")} />
-            {form.formState.errors.description ? (
+            <Textarea 
+              id="description" 
+              rows={4} 
+              {...form.register("description")} 
+              disabled={mutation.isPending} 
+            />
+            {form.formState.errors.description && (
               <p className="text-xs text-destructive">
                 {form.formState.errors.description.message}
               </p>
-            ) : null}
+            )}
           </div>
+          
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_120px]">
             <div className="space-y-2">
-              <Label htmlFor="imagePath">
-                {t("forecaster.imagePath")}{" "}
-                <span className="text-xs text-muted-foreground">({t("common.optional")})</span>
+              <Label>
+                {t("forecaster.imagePath")} <span className="text-xs text-muted-foreground">({t("common.optional")})</span>
               </Label>
-              <Input id="imagePath" placeholder="https://…" {...form.register("imagePath")} />
+              
+              <ImagePicker 
+                // Pass the current selected file, OR the existing string from the database
+                value={form.watch("imageFile") || forcastor?.imagePath || null} 
+                onChange={(file) => form.setValue("imageFile", file, { shouldValidate: true })}
+                disabled={mutation.isPending}
+              />
+              
             </div>
             <div className="space-y-2">
               <Label htmlFor="rate">{t("forecaster.rate")}</Label>
-              <Input id="rate" type="number" min={1} max={5} step={1} {...form.register("rate")} />
+              <Input 
+                id="rate" 
+                type="number" 
+                min={1} 
+                max={5} 
+                step={1} 
+                {...form.register("rate")} 
+                disabled={mutation.isPending} 
+              />
             </div>
           </div>
+          
           <DialogFooter className="gap-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               {t("common.cancel")}
