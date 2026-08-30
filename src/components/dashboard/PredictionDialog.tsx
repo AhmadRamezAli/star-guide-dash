@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { toast } from "sonner";
+import { showToast } from "@/components/ui/app-toast";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -107,12 +107,12 @@ export function PredictionDialog({
       return response;
     },
     onSuccess: () => {
-      toast.success(t("common.saved"));
+      showToast.success(t("common.saved"));
       queryClient.invalidateQueries({ queryKey: ["predictions"] });
       onOpenChange(false);
     },
     onError: (error: unknown) =>
-      toast.error(error instanceof Error ? error.message : t("common.error")),
+      showToast.error(t("common.error") ?? "Error", error instanceof Error ? error.message : undefined),
   });
 
   return (

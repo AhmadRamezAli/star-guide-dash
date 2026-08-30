@@ -18,7 +18,7 @@ rate: number | null;
 export interface ForcastorListDto {
   id: string;
   name: string;
-  imagePath: string;
+  imageName: string;
   description: string;
   rate: number | null;
 }

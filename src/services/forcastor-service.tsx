@@ -56,3 +56,10 @@ async (forcastor: ForcastorCreateOrUpdateDto):
     });
     return response.data;
 }
+
+
+export const deleteForcastor = async (id: string): Promise<ApiResult<boolean>> => {
+  // Standard RESTful DELETE request
+  const response = await apiClient.delete<ApiResult<boolean>>(`/api/forcastor/${id}`);
+  return response.data;
+};

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { toast } from "sonner";
+import { showToast } from "@/components/ui/app-toast";
 import { PageHeader } from "@/components/dashboard/DashboardShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +39,7 @@ function SettingsPage() {
         onSubmit={(e) => {
           e.preventDefault();
           setApiBase(value.trim());
-          toast.success(t("common.saved"));
+          showToast.success(t("common.saved"));
         }}
       >
         <div className="space-y-2">

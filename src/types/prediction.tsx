@@ -1,9 +1,9 @@
 import { ZodiacSign,TimeUnit } from "./enums";
-import { forcastorDto } from "./forcastor";
+import { forcastorDto,forcastorListDto } from "./forcastor";
 
 export interface PredictionListDto {
   id: string;
-  forcastorId: string;
+  forcastor: forcastorListDto;
   date: string; // ISO string
   summary: string | null;
   timeUnit: TimeUnits;

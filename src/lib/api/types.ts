@@ -50,22 +50,22 @@ export type ForecasterQuery = {
   pageSize?: number;
 };
 
-export type PredictionListDto = {
-  id: string;
-  forcastorId: string;
-  date: string;
-  summary: string;
-  timeUnit: TimeUnit | number;
-  zodiacSign: ZodiacSign | number;
-};
+// export type PredictionListDto = {
+//   id: string;
+//   forcastorId: string;
+//   date: string;
+//   summary: string;
+//   timeUnit: TimeUnit | number;
+//   zodiacSign: ZodiacSign | number;
+// };
 
-export type PredictionDto = PredictionListDto & {
-  forcastor?: ForecasterDto | null;
-  description?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
-  isDeleted?: boolean;
-};
+// export type PredictionDto = PredictionListDto & {
+//   forcastor?: ForecasterDto | null;
+//   description?: string | null;
+//   createdAt?: string;
+//   updatedAt?: string;
+//   isDeleted?: boolean;
+// };
 
 /** PredicationCreateOrUpdateDto — `id` omitted on create, required on update. */
 export type PredictionCreateInput = {

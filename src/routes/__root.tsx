@@ -118,7 +118,6 @@ function RootShell({ children }: { children: ReactNode }) {
     </html>
   );
 }
-
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
@@ -129,7 +128,17 @@ function RootComponent() {
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
         </DashboardShell>
-        <Toaster position="top-center" />
+        
+        {/* Enterprise Toaster Configuration */}
+        <Toaster 
+          position="top-right" 
+          expand={false} 
+          duration={4000}
+          toastOptions={{
+            unstyled: true, // Strips default Sonner styles
+            className: "flex w-full flex-col gap-2 pointer-events-none",
+          }} 
+        />
       </I18nProvider>
     </QueryClientProvider>
   );

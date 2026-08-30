@@ -39,3 +39,9 @@ async (prediction: predictionCreateOrUpdateDto):
     const response = await apiClient.post<predictionDto>("/api/prediction/update", prediction);
     return response.data;
 }
+
+export const deletePrediction = async (id: string): Promise<ApiResult<boolean>> => {
+  // Standard RESTful DELETE request
+  const response = await apiClient.delete<ApiResult<boolean>>(`/api/prediction/${id}`);
+  return response.data;
+};
